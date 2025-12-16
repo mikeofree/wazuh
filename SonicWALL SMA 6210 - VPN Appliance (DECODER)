@@ -1,0 +1,74 @@
+<decoder name="sma6210-audit">
+  <prematch>VirtualHost='</prematch>
+  <regex type="pcre2">.*VirtualHost='([^']*)'\s+StartTime='([^']*)'\s+Src='([^']*)'\s+User='([^']*)'\s+Method='([^']*)'\s+HTTPVersion='([^']*)'\s+Request='([^']*)'\s+Status='([^']*)'\s+Bytes='([^']*)'</regex>
+  <order>virtualhost,starttime,srcip,user,method,httpversion,request,status,bytes</order>
+</decoder>
+
+<decoder name="sma6210-audit-base">
+  <prematch type="pcre2">SMA6210\.sma\s+logserver</prematch>
+</decoder>
+
+<decoder name="sma6210-audit-flow">
+  <parent>sma6210-audit-base</parent>
+  <prematch type="pcre2">Command='Flow:</prematch>
+  <regex type="pcre2">^.*?\[meta\s+sequenceId=(?:'|")([0-9]+)(?:'|")\].*?Src='([^:']+):([0-9]+)'\s+User='([^']*)'\s+TunnelVersion='([^']*)'\s+Command='([^']*)'\s+Dest='([^:']+):([0-9]+)'\s+Error='([^']*)'\s+SrcBytes='([^']*)'\s+DstBytes='([^']*)'\s+Duration='([^']*)'\s+PlatformPrefix='([^']*)'\s+EquipmentId='([^']*)'\s+SessionKey='([^']*)'.*$</regex>
+  <order>sma.sequence_id,srcip,srcport,srcuser,tunnelversion,command,dstip,dstport,error,srcbytes,dstbytes,duration,platformprefix,equipmentid,sessionkey</order>
+</decoder>
+
+<decoder name="sma6210-audit-resource-access">
+  <parent>sma6210-audit-base</parent>
+  <prematch type="pcre2">EventMessage:\s+Resource Access</prematch>
+  <regex type="pcre2">^.*?\[meta\s+sequenceId=(?:'|")([0-9]+)(?:'|")\]\s+EventMessage:\s+Resource Access\s+-\s+User='([^']*)',\s+Src='([^:']+):([0-9]+)',\s+Dest_IP='([^:']+):([0-9]+)',\s+Rule Info='([^']*)',\s+Full Destination='([^:']+):([0-9]+)',\s+Access Agent='([^']*)',\s+Allowed='([01])'\s*$</regex>
+  <order>sma.sequence_id,srcuser,srcip,srcport,dstip,dstport,rule_info,full_dst_ip,full_dst_port,access_agent,allowed</order>
+</decoder>
+
+ <!-- ================================================================================== -->
+
+<decoder name="sma6210-cron">
+  <prematch type="pcre2">SMA6210\.sma\s+CRON\s</prematch>
+</decoder>
+
+<decoder name="sma6210-cron-pam">
+  <parent>sma6210-cron</parent>
+  <prematch type="pcre2">pam_unix\(cron:session\):</prematch>
+  <regex type="pcre2">^\d+\s+&lt;\d+&gt;1\s+\S+\s+SMA6210\.sma\s+CRON\s+(\d+)\s+-\s+\[meta\s+sequenceId=(?:'|")(\d+)(?:'|")\]\s+pam_unix\(cron:session\):\s+(session\s+(?:opened|closed).*)$</regex>
+  <order>cron.pid,sma.sequence_id,cron.message</order>
+</decoder>
+
+<decoder name="sma6210-cron-cmd">
+  <parent>sma6210-cron</parent>
+  <prematch type="pcre2">\)\s+CMD\s+\(</prematch>
+  <regex type="pcre2">^\d+\s+&lt;\d+&gt;1\s+\S+\s+SMA6210\.sma\s+CRON\s+(\d+)\s+-\s+\[meta\s+sequenceId=(?:'|")(\d+)(?:'|")\]\s+\(([^)]+)\)\s+CMD\s+\(\s*(.*?)\s*\)\s*$</regex>
+  <order>cron.pid,sma.sequence_id,cron.user,cron.cmd</order>
+</decoder>
+
+ <!-- ================================================================================== -->
+ 
+ <decoder name="sma6210-syslogng">
+  <prematch type="pcre2">SMA6210\.sma\s+syslog-ng\s</prematch>
+</decoder>
+
+<decoder name="sma6210-syslogng-established">
+  <parent>sma6210-syslogng</parent>
+  <prematch type="pcre2">Syslog connection established;</prematch>
+  <regex type="pcre2">^(?:\d+\s+)?&lt;\d+&gt;1\s+\S+\s+SMA6210\.sma\s+syslog-ng\s+(\d+)\s+-\s+\[meta\s+sequenceId=(['"])(\d+)\2\]\s+Syslog connection established;\s+fd=(['"])([^'"]+)\4,\s+server=(['"])AF_INET\(([^:]+):(\d+)\)\6,\s+local=(['"])AF_INET\(([^:]+):(\d+)\)\9.*$</regex>
+  <order>syslogng.pid,sma.sequence_id,syslogng.fd,syslogng.server_ip,syslogng.server_port,syslogng.local_ip,syslogng.local_port</order>
+</decoder>
+
+<decoder name="sma6210-syslogng-closed">
+  <parent>sma6210-syslogng</parent>
+  <prematch type="pcre2">Syslog connection closed;</prematch>
+  <regex type="pcre2">^(?:\d+\s+)?&lt;\d+&gt;1\s+\S+\s+SMA6210\.sma\s+syslog-ng\s+(\d+)\s+-\s+\[meta\s+sequenceId=(['"])(\d+)\2\]\s+Syslog connection closed;\s+fd=(['"])([^'"]+)\4,\s+server=(['"])AF_INET\(([^:]+):(\d+)\)\6,\s+time_reopen=(['"])([^'"]+)\9.*$</regex>
+  <order>syslogng.pid,sma.sequence_id,syslogng.fd,syslogng.server_ip,syslogng.server_port,syslogng.time_reopen</order>
+</decoder>
+
+<decoder name="sma6210-syslogng-eof-idle">
+  <parent>sma6210-syslogng</parent>
+  <prematch type="pcre2">EOF occurred while idle;</prematch>
+  <regex type="pcre2">^(?:\d+\s+)?&lt;\d+&gt;1\s+\S+\s+SMA6210\.sma\s+syslog-ng\s+(\d+)\s+-\s+\[meta\s+sequenceId=(['"])(\d+)\2\]\s+EOF occurred while idle;\s+fd=(['"])([^'"]+)\4.*$</regex>
+  <order>syslogng.pid,sma.sequence_id,syslogng.fd</order>
+</decoder>
+
+ <!-- ================================================================================== -->
+ 
+ 
