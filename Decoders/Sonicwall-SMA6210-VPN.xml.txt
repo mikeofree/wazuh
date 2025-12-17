@@ -1,0 +1,139 @@
+  <!-- ================================================================================== -->
+
+<decoder name="sma6210-audit">
+  <prematch>VirtualHost='</prematch>
+  <regex type="pcre2">.*VirtualHost='([^']*)'\s+StartTime='([^']*)'\s+Src='([^']*)'\s+User='([^']*)'\s+Method='([^']*)'\s+HTTPVersion='([^']*)'\s+Request='([^']*)'\s+Status='([^']*)'\s+Bytes='([^']*)'</regex>
+  <order>virtualhost,starttime,srcip,user,method,httpversion,request,status,bytes</order>
+</decoder>
+
+<decoder name="sma6210-resource-access">
+  <prematch type="pcre2">^\s*EventMessage:\s+Resource Access</prematch>
+  <regex type="pcre2">^\s*EventMessage:\s+Resource Access\s+-\s+User='([^']*)',\s+Src='([^:']+):([0-9]+)',\s+Dest_IP='([^:']+):([0-9]+)',\s+Rule Info='([^']*)',\s+Full Destination='(?:[A-Za-z][A-Za-z0-9+.\-]*://)?([^:/']+):([0-9]+)(?:/[^']*)?',\s+Access Agent='([^']*)',\s+Allowed='([01])'\s*$</regex>
+  <order>srcuser,srcip,srcport,dstip,dstport,rule_info,full_dst_ip,full_dst_port,access_agent,allowed</order>
+</decoder>
+
+<decoder name="sma6210-flow">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Info\s+Audit\s+Src=</prematch>
+  <regex type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Info\s+Audit\s+Src='([^:']+):([0-9]+)'\s+User='([^']*)'\s+TunnelVersion='([^']*)'\s+Command='([^']*)'\s+Dest='([^:']+):([0-9]+)'\s+Error='([^']*)'\s+SrcBytes='([^']*)'\s+DstBytes='([^']*)'\s+Duration='([^']*)'\s+PlatformPrefix='([^']*)'\s+EquipmentId='([^']*?)\.?'\s+SessionKey='([^']*)'\s*$</regex>
+  <order>srcip,srcport,srcuser,tunnelversion,command,dstip,dstport,error,srcbytes,dstbytes,duration,platformprefix,equipmentid,sessionkey</order>
+</decoder>
+ <!-- ================================================================================== -->
+<decoder name="sma6210-syslogng-stats">
+  <prematch type="pcre2">^Log statistics;</prematch>
+</decoder>
+ <!-- ================================================================================== -->
+<decoder name="sma6210-auth-error">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Error\s+System\s+AUTH:</prematch>
+  <regex type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Error\s+System\s+AUTH:\s+([^:]+)\s+:.*User\s+([^\s]+)\s+(.*)$</regex>
+  <order>auth_method,srcuser,auth_error</order>
+</decoder>
+
+<decoder name="sma6210-auth-warning">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Warning\s+System\s+AUTH:</prematch>
+  <regex type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Warning\s+System\s+AUTH:\s+([^:]+)\s+:(.*)$</regex>
+  <order>auth_method,auth_warning</order>
+</decoder>
+
+<decoder name="sma6210-ldap-connect">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Info\s+System\s+connecting\s+to\s+ldaps://</prematch>
+  <regex type="pcre2">connecting\s+to\s+(ldaps://[^ ]+)</regex>
+  <order>ldap_server</order>
+</decoder>
+ <!-- ================================================================================== -->
+<decoder name="sma6210-eventmessage">
+    <prematch>EventMessage:</prematch>
+</decoder>
+
+<decoder name="sma6210-session">
+  <parent>sma6210-eventmessage</parent>
+  <prematch type="pcre2">^\s*EventMessage:\s+Session\s+(?:Start|End)\b</prematch>
+  <regex type="pcre2">^EventMessage:\s+Session\s+(Start\s+Success|End)\s+Context='([^']+)',\s+User='\(([^)]+)\)@\(([^)]+)\)',\s+Source='([^']+)',\s+SessionKey='([^']+)',\s+AuthType=([0-9]+)\s*(.*)$</regex>
+  <order>event_action,context,user,realm,srcip,session_key,auth_type,extra</order>
+</decoder>
+
+<decoder name="sma6210-session-update-infos">
+  <parent>sma6210-eventmessage</parent>
+  <prematch type="pcre2">^\s*EventMessage:\s+Session\s+Update\s+infos\b</prematch>
+  <regex type="pcre2">^\s*EventMessage:\s+Session\s+Update\s+infos\s+Context='([^']+)',\s+User='\(([^)]+)\)@\(([^)]+)\)',\s+SessionKey='([^']+)',\s+FramedIP='([^']+)',\s+FramedIP6='([^']+)',\s+Source='([^']+)'\s*$</regex>
+  <order>context,user,realm,session_key,framed_ip,framed_ip6,srcip</order>
+</decoder>
+
+
+ <!-- ================================================================================== -->
+
+<decoder name="sma6210-ssl-proto-reject">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Error\s+Session\s+Inbound\s+ExtraWeb/API\s+SSL connection was rejected</prematch>
+  <regex type="pcre2">^\[[^\]]+\]\s+SMA6210\s+(\S+)\s+(\S+)\s+(\S+)\s+Error\s+Session\s+Inbound\s+ExtraWeb\/API\s+SSL connection was rejected because (.+?)\s+\(([^:]+):([0-9]+)\)\s*$</regex>
+  <order>event_id,facility,code,ssl_reason,srcip,srcport</order>
+</decoder>
+
+
+<decoder name="sma6210-ssl-handshake">
+  <prematch type="pcre2">^\[[^\]]+\]\s+SMA6210\s+\S+\s+\S+\s+\S+\s+Error\s+Session\s+::SSL Handshake error:</prematch>
+  <regex type="pcre2">^\[[^\]]+\]\s+SMA6210\s+(\S+)\s+(\S+)\s+(\S+)\s+Error\s+Session\s+::SSL Handshake error:([^:]+):([0-9]+)\s+alert=([0-9]+)\s+error:([^ ]+)\s+(.+)$</regex>
+  <order>event_id,facility,code,srcip,srcport,ssl_alert,openssl_errcode,openssl_errtext</order>
+</decoder>
+
+
+ <!-- ================================================================================== -->
+ 
+
+<decoder name="sma6210-ps-base">
+  <prematch type="pcre2">\[\d{1,2}/[A-Za-z]{3}/\d{4}:[0-9:.]+\s+[+-]\d{4}\]\s+SMA6210\s+\d+\s+ps\s+\S+\s+(?:Info|Warning)\s+\S+</prematch>
+</decoder>
+
+<decoder name="sma6210-ps-login-assigned">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">Info\s+System\s+'.*'\s+logged in from</prematch>
+  <regex type="pcre2">Info\s+System\s+'\(([^)]+)\)\@\(([^)]+)\)'\s+logged in from\s+(\d{1,3}(?:\.\d{1,3}){3})\s+and was assigned to\s+'([^']+)'\.</regex>
+  <order>user,realm,srcip,assigned_group</order>
+</decoder>
+  
+<decoder name="sma6210-ps-session-start-auth">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">Session Start:</prematch>
+  <regex type="pcre2">Info\s+\w+\s+(Session Start):\s+'\(([^)]+)\)@\(([^)]+)\)'</regex>
+  <order>session_action, user, realm</order>
+</decoder>
+
+<decoder name="sma6210-ps-session-end">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">Session End:</prematch>
+  <regex type="pcre2">Info\s+\w+\s+(Session End):\s+'\(([^)]+)\)@\(([^)]+)\)'</regex>
+  <order>session_action, user, realm</order>
+</decoder>
+
+<decoder name="sma6210-ps-epc-zone-match">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">EPC Zone\s+'</prematch>
+  <regex type="pcre2">Info\s+Policy\s+EPC Zone\s+'([^']+)'\s+matches\s+Client Profile\s+'([^']+)'\s+for user\s+'\(([^)]+)\)@\(([^)]+)\)'\.</regex>
+  <order>epc_zone,client_profile,user,realm</order>
+</decoder>
+ 
+<decoder name="sma6210-ps-session-conn-unauth">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">Warning\s+Session\s+Conn:\s+Unable to authorize</prematch>
+  <regex type="pcre2">Warning\s+Session\s+Conn:\s+Unable to authorize connection that is bound to\s+(\S+)\s+realm,\s+id=(0x[0-9A-Fa-f]+)\.?</regex>
+  <order>bound_realm,conn_id</order>
+</decoder> 
+
+<decoder name="sma6210-ps-session-noauth-logout">
+  <parent>sma6210-ps-base</parent>
+  <prematch type="pcre2">Warning\s+Session\s+No Auth::Connection,\s+unable to call logout</prematch>
+  <regex type="pcre2">Warning\s+Session\s+No Auth::Connection,\s+(unable to call logout)\.</regex>
+  <order>event</order>
+</decoder>
+
+  <!-- ================================================================================== -->
+  
+<decoder name="sma6210-kernel-misc-base">
+  <prematch type="pcre2">^\s*\[[^\]]+\]\s+SMA6210\s+\d+\s+(?!ps\b)\S+\s+\S+\s+(?:Info|Warning)\s+Misc\s+\x3cKERNEL\x3e</prematch>
+</decoder>
+
+<decoder name="sma6210-kernel-client-attr">
+  <parent>sma6210-kernel-misc-base</parent>
+  <regex type="pcre2">^\s*\[([^\]]+)\]\s+SMA6210\s+(\d+)\s+(\S+)\s+(\S+)\s+(Info|Warning)\s+Misc\s+\x3cKERNEL\x3e\s+Client\s+(.+?)=([^\s]+)\s+\x3c([0-9A-Fa-f]+)\x3e\s*$</regex>
+  <order>logtime,pid,facility,code,level,client_field,client_value,tun_id</order>
+</decoder>
+  
+  <!-- ================================================================================== -->
