@@ -1,0 +1,19 @@
+<decoder name="barracuda_web">
+  <prematch>^\s*barracuda_pqman:</prematch>
+</decoder>
+
+<decoder name="barracuda_web_fields">
+  <parent>barracuda_web</parent>
+  <regex type="pcre2">^\s*barracuda_pqman: (\d+) \d+ (\S+) (\S+) - \S+ (\S+) \d+ \S+ (\S+) (\S+) \s+\d+ \d+ \d+ \d+ \d+ \([^)]+\) \d+ - \d+ - \d+ (\S+) (\S+) (\S+)</regex>
+  <order>timestamp, srcip, dstip, url, action, status, domain, category, srcusr</order>
+</decoder>
+
+<decoder name="barracuda_web_http">
+  <prematch>^\s*http_scan:</prematch>
+</decoder>
+
+<decoder name="barracuda_web_http_scan">
+  <parent>barracuda_web_http</parent>
+  <regex type="pcre2">^\s*http_scan: (\d+) \d+ (\S+) (\S+) (\S+) \S+ (\S+) \d+ \S+ (\S+) (\S+) \s+\d+ \d+ \d+ \d+ \d+ \(.+\) \d+ - \d+ - \d+ (\S+) (\S+) (\S+)</regex>
+  <order>timestamp, srcip, dstip, log_type, url, action, status, domain, category, srcusr</order>
+</decoder>
